@@ -26,6 +26,10 @@ public:
     {
         return this->name;
     }
+    const double &getSalary() const
+    {
+        return this->salary;
+    }
     const size_t getNumSubordinates() const
     {
         return this->subordinates.size();
@@ -77,7 +81,6 @@ public:
         }
     }
 };
-
 class Tree
 {
 private:
@@ -156,7 +159,6 @@ private:
         {
             if (parent->getSubordinates()[i]->getName() == nodeName)
             {
-                delete parent->getSubordinates()[i];
                 parent->getSubordinates2().erase(parent->getSubordinates().begin() + i);
                 return true;
             }
@@ -172,6 +174,7 @@ private:
 
         return false;
     }
+
     const int numberOfEmployeesUnder(const string &key)
     {
         Node *found = this->search(key);
@@ -329,25 +332,60 @@ private:
         }
         return 0;
     }
+    void mergeHierarchies(Node *mergedHierarchy, const Node &hierarchy1, const Node &hierarchy2)
+    {
+        for (size_t i = 0; i < hierarchy2.getNumSubordinates(); ++i)
+        {
+            bool found = false;
+            for (size_t j = 0; j < mergedHierarchy->getNumSubordinates(); ++j)
+            {
+                if (mergedHierarchy->getSubordinates()[j]->getName() == hierarchy2.getSubordinates()[i]->getName())
+                {
+                    Node *mergedSubordinate = mergedHierarchy->getSubordinates2()[j];
 
-//modernoto za povishavane
-     void postOrderTraversal(Node* root) {
-        if (root == nullptr) {
-            return;
+                    mergeHierarchies(mergedSubordinate, *mergedSubordinate, *hierarchy2.getSubordinates()[i]);
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found)
+            {
+                Node *copy = new Node(hierarchy2.getSubordinates()[i]);
+                mergedHierarchy->getSubordinates2().push_back(copy);
+            }
         }
 
-        size_t numChildren = root->getSubordinates().size();
-        for (size_t i = 0; i < numChildren; ++i) {
-            postOrderTraversal(root->getSubordinates()[i]);
-        }
+        for (size_t i = 0; i < hierarchy2.getNumSubordinates(); ++i)
+        {
+            bool found = false;
+            for (size_t j = 0; j < mergedHierarchy->getNumSubordinates(); ++j)
+            {
+                if (mergedHierarchy->getSubordinates()[j]->getName() == hierarchy2.getSubordinates()[i]->getName())
+                {
+                    found = true;
+                    break;
+                }
+            }
 
+            if (!found)
+            {
+                Node *copy = new Node(hierarchy2.getSubordinates()[i]);
+                mergedHierarchy->getSubordinates2().push_back(copy);
+            }
+        }
     }
+
 public:
     Tree(const string bossName)
     {
         this->boss = new Node(bossName);
     }
 
+    Node *getBoss() const
+    {
+        return this->boss;
+    }
     void buildTree(const string &fileContent)
     {
         size_t start = 0;
@@ -369,6 +407,7 @@ public:
     {
         cout << "Tree structure:" << endl;
         printTree(this->boss);
+        cout << "---------- END PRINT ----------\n";
     }
 
     void insert(const string &value)
@@ -488,11 +527,19 @@ public:
             cout << "Salary for " << name << " is " << salary << endl;
         }
     }
+
+    void merge(Node *boss2)
+    {
+        if (boss != boss2)
+        {
+            mergeHierarchies(boss, *boss, *boss2);
+        }
+    }
 };
 
-void readFromFile(string &fileContent)
+void readFromFile(string &fileContent, string fn)
 {
-    ifstream inputFile("tree_data.txt");
+    ifstream inputFile(fn);
 
     if (!inputFile.is_open())
     {
@@ -511,12 +558,16 @@ void readFromFile(string &fileContent)
 }
 int main()
 {
-    string data;
-    readFromFile(data);
+    string data, data2;
+    readFromFile(data, "tree_data.txt");
+    readFromFile(data2, "tree_data2.txt");
 
     Tree *tennis = new Tree("CEO_to");
+    Tree *tennis2 = new Tree("CEO_to");
     tennis->buildTree(data);
-    // tennis->printTree();
+    tennis2->buildTree(data2);
+    tennis->printTree();
+    tennis2->printTree();
 
     // 1 Да можете да проверите дали даден служител е част от дадена йерархия;
     //  tennis->doesEmployeeExist("Marina");
@@ -570,5 +621,7 @@ int main()
     // tennis->calculateSalary("Raonic");
     // tennis->calculateSalary("Marina");
 
+    tennis->merge(tennis2->getBoss());
+    tennis->printTree();
     return 0;
 }
