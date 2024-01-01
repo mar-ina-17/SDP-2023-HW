@@ -1,86 +1,13 @@
-#include <iostream>
+
+#ifndef TREE_H
+#define TREE_H
+#pragma once
+
 #include <fstream>
-#include <map>
-#include <vector>
-#include <string>
-using namespace std;
-class Node
-{
-private:
-    string name;
-    double salary;
-    vector<Node *> subordinates;
+#include <sstream>
 
-public:
-    Node(const string nname)
-    {
-        this->name = nname;
-    }
-    Node(const Node *n)
-    {
-        this->name = n->getName();
-        this->subordinates = n->getSubordinates();
-    }
+#include "node.h"
 
-    const string &getName() const
-    {
-        return this->name;
-    }
-    const double &getSalary() const
-    {
-        return this->salary;
-    }
-    const size_t getNumSubordinates() const
-    {
-        return this->subordinates.size();
-    }
-    const vector<Node *> &getSubordinates() const
-    {
-        return this->subordinates;
-    }
-    vector<Node *> &getSubordinates2()
-    {
-        return this->subordinates;
-    }
-    void pushToSubordinates(Node *sub)
-    {
-        this->subordinates.push_back(sub);
-    }
-
-    Node *findInSubordinates(const string subName)
-    {
-        unsigned int size = this->subordinates.size();
-        for (unsigned int i = 0; i < size; i++)
-        {
-            if (this->subordinates[i]->getName() == subName)
-            {
-                return this->subordinates[i];
-            }
-        }
-        return nullptr;
-    }
-    string findBossOfSubordinates(const string subName)
-    {
-        unsigned int size = this->subordinates.size();
-        for (unsigned int i = 0; i < size; i++)
-        {
-            if (this->subordinates[i]->getName() == subName)
-            {
-                return this->name;
-            }
-        }
-        return nullptr;
-    }
-
-    void printNodeAndChildren()
-    {
-        cout << "Parent: " << this->name << endl;
-        for (size_t i = 0; i < this->subordinates.size(); i++)
-        {
-            cout << "Child " << i << ":" << this->subordinates[i]->getName() << endl;
-        }
-    }
-};
 class Tree
 {
 private:
@@ -208,7 +135,7 @@ private:
     bool fireEmployee(const string &name)
     {
         Node *found = searchRec(this->boss, name);
-        if (name != "CEO_to" && found)
+        if (name != this->boss->getName() && found)
         {
             vector<Node *> subs = found->getSubordinates();
 
@@ -226,11 +153,11 @@ private:
     {
         Node *found = searchRec(this->boss, name);
         Node *findBoss = searchRec(this->boss, bossName);
-        if (name != "CEO_to")
+        if (name != this->boss->getName())
         {
             if (found)
             {
-                Node *copyFound = new Node(found);
+                Node *copyFound = new Node(*found);
                 this->fireEmployee(name);
                 findBoss->pushToSubordinates(copyFound);
                 return true;
@@ -332,46 +259,54 @@ private:
         }
         return 0;
     }
-    void mergeHierarchies(Node *mergedHierarchy, const Node &hierarchy1, const Node &hierarchy2)
+    void mergeHierarchies(Node *mergedBoss, const Node &hierarchy1, const Node &hierarchy2)
     {
-        for (size_t i = 0; i < hierarchy2.getNumSubordinates(); ++i)
+        for (size_t i = 0; i < hierarchy2.getNumSubordinates(); ++i) // purvo obhojda
         {
             bool found = false;
-            for (size_t j = 0; j < mergedHierarchy->getNumSubordinates(); ++j)
-            {
-                if (mergedHierarchy->getSubordinates()[j]->getName() == hierarchy2.getSubordinates()[i]->getName())
-                {
-                    Node *mergedSubordinate = mergedHierarchy->getSubordinates2()[j];
 
-                    mergeHierarchies(mergedSubordinate, *mergedSubordinate, *hierarchy2.getSubordinates()[i]);
+            for (size_t j = 0; j < mergedBoss->getNumSubordinates(); ++j) // ako ima zapisi v izhodnoto durvo shte proveri dali veche ne sushtestvuva tekushtiq ot h2
+            {
+                if (mergedBoss->getSubordinates2()[j]->getName() == hierarchy2.getSubordinates()[i]->getName())
+                {
+                    Node *mergedSubordinate = mergedBoss->getSubordinates2()[j];
+
+                    // shte se vikne rekursivno za da produlji s dobavqneto na sub-ovete na h1 i h2
+                    mergeHierarchies(mergedSubordinate, *hierarchy1.getSubordinates()[i], *hierarchy2.getSubordinates()[i]);
+
                     found = true;
                     break;
                 }
             }
 
+            // ako ne e nameren zapis ili kato cqlo nqma zapisi v izhodnoto durvo, prosto shte se dobavi tekushtiq ot h2
             if (!found)
             {
-                Node *copy = new Node(hierarchy2.getSubordinates()[i]);
-                mergedHierarchy->getSubordinates2().push_back(copy);
+                Node *copy = new Node(*hierarchy2.getSubordinates()[i]);
+                mergedBoss->getSubordinates2().push_back(copy);
             }
         }
 
+        // dobavq subovete ot h2
         for (size_t i = 0; i < hierarchy2.getNumSubordinates(); ++i)
         {
             bool found = false;
-            for (size_t j = 0; j < mergedHierarchy->getNumSubordinates(); ++j)
+
+            // proverqvame dali sub-a ot h2 ne susht v izhodnoto durvo
+            for (size_t j = 0; j < mergedBoss->getNumSubordinates(); ++j)
             {
-                if (mergedHierarchy->getSubordinates()[j]->getName() == hierarchy2.getSubordinates()[i]->getName())
+                if (mergedBoss->getSubordinates()[j]->getName() == hierarchy2.getSubordinates()[i]->getName())
                 {
                     found = true;
                     break;
                 }
             }
 
+            // ako ne e nameren zapis ili kato cqlo nqma zapisi v izhodnoto durvo, prosto shte se dobavi tekushtiq ot h2
             if (!found)
             {
-                Node *copy = new Node(hierarchy2.getSubordinates()[i]);
-                mergedHierarchy->getSubordinates2().push_back(copy);
+                Node *copy = new Node(*hierarchy2.getSubordinates()[i]);
+                mergedBoss->getSubordinates2().push_back(copy);
             }
         }
     }
@@ -380,6 +315,12 @@ public:
     Tree(const string bossName)
     {
         this->boss = new Node(bossName);
+    }
+
+    ~Tree()
+    {
+        delete boss;
+        boss = nullptr;
     }
 
     Node *getBoss() const
@@ -417,6 +358,11 @@ public:
 
     Node *search(const string &key)
     {
+        if (key.empty())
+        {
+            cout << "ERROR! Search not possible - key is empty!\n";
+            return nullptr;
+        }
         return searchRec(boss, key);
     }
 
@@ -451,7 +397,7 @@ public:
     // find boss of employee
     void findBossOf(const string &key)
     {
-        if (key != "CEO_to")
+        if (key != this->boss->getName())
         {
             Node *n = searchBoss(boss, key);
 
@@ -473,7 +419,7 @@ public:
     // get size of whole hierarchy
     void getSizeOfHierarchy()
     {
-        cout << "Size of hierarchy is: " << getTreeSize(boss);
+        cout << "Size of hierarchy is: " << getTreeSize(boss) << endl;
     }
 
     // fire employee
@@ -528,100 +474,51 @@ public:
         }
     }
 
-    void merge(Node *boss2)
+    Tree *merge(Node *boss1, Node *boss2)
     {
-        if (boss != boss2)
+        if (boss1 != boss2)
         {
-            mergeHierarchies(boss, *boss, *boss2);
+            Tree *mergedTree = new Tree("CEO_to");
+
+            mergedTree->mergeHierarchies(mergedTree->getBoss(), *boss1, *boss2);
+            return mergedTree;
         }
+        return nullptr;
+    }
+
+    void saveTreeToFile(Node *currentNode, ofstream &outputFile)
+    {
+        if (currentNode)
+        {
+            const vector<Node *> &subordinates = currentNode->getSubordinates();
+            for (size_t i = 0; i < subordinates.size(); ++i)
+            {
+                if (!subordinates[i]->getName().empty())
+                {
+                    outputFile << currentNode->getName() << "-" << subordinates[i]->getName() << endl;
+                }
+            }
+
+            for (size_t i = 0; i < subordinates.size(); ++i)
+            {
+                saveTreeToFile(subordinates[i], outputFile);
+            }
+        }
+    }
+
+    void saveTreeToFile(const string &filename)
+    {
+        ofstream outputFile(filename);
+
+        if (!outputFile.is_open())
+        {
+            cerr << "Error opening the file: " << filename << endl;
+            return;
+        }
+        saveTreeToFile(this->boss, outputFile);
+
+        outputFile.close();
     }
 };
 
-void readFromFile(string &fileContent, string fn)
-{
-    ifstream inputFile(fn);
-
-    if (!inputFile.is_open())
-    {
-        cerr << "Error opening file." << endl;
-        return;
-    }
-
-    string line;
-
-    while (getline(inputFile, line))
-    {
-        fileContent += line + "\n";
-    }
-
-    inputFile.close();
-}
-int main()
-{
-    string data, data2;
-    readFromFile(data, "tree_data.txt");
-    readFromFile(data2, "tree_data2.txt");
-
-    Tree *tennis = new Tree("CEO_to");
-    Tree *tennis2 = new Tree("CEO_to");
-    tennis->buildTree(data);
-    tennis2->buildTree(data2);
-    tennis->printTree();
-    tennis2->printTree();
-
-    // 1 Да можете да проверите дали даден служител е част от дадена йерархия;
-    //  tennis->doesEmployeeExist("Marina");
-    //  tennis->doesEmployeeExist("CEO_to");
-    //  tennis->doesEmployeeExist("Djokovic");
-
-    // 2 За даден служител трябва да можете да кажете броя на преките му подчинени;
-    //  tennis->directSubordinatesNum("CEO_to");
-    //  tennis->directSubordinatesNum("Djokovic");
-    //  tennis->directSubordinatesNum("marina");
-
-    // 3 За даден служител трябва да можете да кажете името на прекия му ръководител;
-    //  tennis->findBossOf("Djokovic");
-    //  tennis->findBossOf("Dimitrov");
-    //  tennis->findBossOf("CEO_to");
-    //  tennis->findBossOf("marina");
-
-    // 4 За дадена йерархия трябва да можете да кажете броя на всички служители в нея;
-    // tennis->getSizeOfHierarchy();
-
-    // 6 По подадена йерархия и име на служител трябва да уволните (премахнете) служителя, като всички негови подчинени стават съответно подчинени на ръководителя му. Разбира се, няма как да се уволни CEO-то;
-    //  tennis->fireEmployeeByName("Alcaraz");
-    //  tennis->fireEmployeeByName("marina");
-    //  tennis->fireEmployeeByName("CEO_to");
-
-    // 7 По подадена йерархия, име на служител и име на ръководител трябва да назначите служителя като подчинен на този ръководител.
-    // tennis->employ("Nadal", "Marina");
-    // tennis->employ("Dimitrov", "Nadal");
-    // tennis->employ("Nadal", "CEO_to");
-
-    // 8
-    // tennis->numberOfEmployees("Dimitrov");
-    // tennis->numberOfEmployees("Djokovic");
-    // tennis->numberOfEmployees("CEO_to");
-    // tennis->numberOfEmployees("marina");
-    // tennis->printTree();
-
-    // 9 Трябва да намирате броя на всички ръководители, които са претоварени - имат повече от N подчинени (преки или не). N е параметър на операцията;
-    // tennis->overloads(0); -> 13
-    // tennis->overloads(2); -> 5
-    // tennis->overloads(10); ->1
-    // tennis->overloads(15); -> 0
-
-    // 10 За една фирма трябва да можете да кажете от колко човека се състои най-дългата верига от отношения ръководител-подчинен;
-    // tennis->longest();
-
-    // 11 Трябва да може да смятате заплатата на даден служител, като тя се определя по следната формула: 500 * <брой преки подчинени> + 50 * <брой непреки подчинени>;
-    // tennis->calculateSalary("Dimitrov");
-    // tennis->calculateSalary("CEO_to");
-    // tennis->calculateSalary("Djokovic");
-    // tennis->calculateSalary("Raonic");
-    // tennis->calculateSalary("Marina");
-
-    tennis->merge(tennis2->getBoss());
-    tennis->printTree();
-    return 0;
-}
+#endif
